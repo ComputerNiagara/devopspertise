@@ -1,2 +1,3 @@
-# devopspertise
-Work related to www.devopspertise.com
+# DevOpspertise
+
+This repository contains snippets of code referenced on https://www.devopspertise.com.
