@@ -188,12 +188,6 @@ Try {
     Write-Host "`nGetting VMs in $resourceGroupNameCurrent"
     $allVmsRg = Get-AzVm -ResourceGroup $resourceGroupNameCurrent
 
-    # Check if Resource Group has existing JIT Policy
-    $existJitPolicy = Get-AzJitNetworkAccessPolicy -ResourceGroupName $resourceGroupNameCurrent
-
-    if(!$existJitPolicy) {
-       # Loop through Virtual Machines within Resource Group and apply JIT Policy
-
       foreach($vm in $allVmsRg) {
         $nsgFound = $false
 
@@ -223,7 +217,7 @@ Try {
         } 
         
         if($nsgFound) {
-          $setJitPolicy = Set-JustInTimePolicyForVM -Id $vm.Id -AllowedSourceAddressPrefixes $AllowedSourceAddressPrefixes
+          $setJitPolicy = Set-JustInTimePolicyForVM -Id $vm.Id -AllowedSourceAddressPrefixes $allowedSourceSubnets
           $setJitPolicyArr+=@($setJitPolicy)
         }
         else {
@@ -236,13 +230,6 @@ Try {
       else {
         Write-Host "No suitable VMs found for onboarding in resource group $resourceGroupNameCurrent"
       }
-    }
-    else {
-      Write-Host "WARNING: JIT Policy already exists in $resourceGroupNameCurrent <--- no changes made" -ForegroundColor "Yellow"
-      foreach($policy in $existJitPolicy) {
-        Write-Host $policy.Id
-      }
-    } 
   }
 }
 Catch {
