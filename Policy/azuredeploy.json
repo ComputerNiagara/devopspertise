@@ -1,0 +1,115 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "variables": {},
+    "resources": [
+    {
+        "type": "Microsoft.Authorization/policyDefinitions",
+        "name": "policyDefinition-allowed-app-service-plans",
+        "apiVersion": "2018-03-01",
+        "properties": {
+            "displayName": "Allowed App Service Plans",
+            "policyType": "Custom",
+            "mode": "All",
+            "description": "Will deny app service plans that do not have a specific sku name",
+            "metadata": {
+                "category": "App Service"      
+            },
+            "parameters": {
+                "listOfAllowedSkuName": {
+                    "type": "Array",
+                    "defaultValue": [
+                        "F1", 
+                        "B1",
+                        "S1"
+                    ],
+                    "metadata": {
+                        "displayName": "Allowed sku names",
+                        "description": "A list of allowed sku names, example: F1;B1"
+                    }
+                },
+                "effect": {
+                    "type": "string",
+                    "defaultValue": "Deny",
+                    "allowedValues": [
+                        "Audit",
+                        "Deny",
+                        "Disabled"
+                    ],
+                    "metadata": {
+                        "displayName": "Effect",
+                        "description": "Enable or disable the execution of the policy"
+                    }
+                }
+            },
+            "policyRule": {
+                "if": {
+                    "allOf": [{
+                            "field": "type",
+                            "equals": "Microsoft.Web/serverfarms"
+                        },
+                        {
+                            "field": "Microsoft.Web/serverfarms/sku.name",
+                            "notIn": "[[parameters('listOfAllowedSkuName')]" 
+                        }
+                    ]
+                },
+                "then": {
+                    "effect": "[[parameters('effect')]"
+                }
+            }
+        }
+    },
+        {
+        "type": "Microsoft.Authorization/policySetDefinitions",
+        "name": "policySetDefinition-custom-policies",
+        "apiVersion": "2018-03-01",
+        "dependsOn": [
+            "policyDefinition-allowed-app-service-plans"
+        ],
+        "properties": {
+            "displayName": "App service policy definition collection",
+            "policyType": "Custom",
+            "description": "Specific Azure policy definitions that are deemed valuable for Cloud governance of Azure App Service.",
+            "metadata": {
+                "category": "App Service"
+            },
+            "policyDefinitions": [{
+                    "policyDefinitionId": "[resourceId('Microsoft.Authorization/policyDefinitions', 'policyDefinition-allowed-app-service-plans')]",
+                    "parameters": {
+                        "listOfAllowedSkuName": {
+                            "value": [
+                                "F1",
+                                "B1"
+                            ]
+                        },
+                        "effect": {
+                            "value": "Deny"
+                        }
+                    }
+                },
+                {
+                    "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/cb510bfd-1cba-4d9f-a230-cb0976f4bb71",
+                    "parameters": {
+                        "effect": {
+                            "value": "AuditIfNotExists"
+                        }
+                    }
+                }
+            ]
+        }
+    },
+    {
+        "type": "Microsoft.Authorization/policyAssignments",
+        "name": "policyAssignment-custom-policies",
+        "apiVersion": "2018-03-01",
+        "dependsOn": [
+            "policySetDefinition-custom-policies"
+        ],
+        "properties": {
+            "displayName": "App service policy definition collection",
+            "scope": "[subscription().id]",
+            "policyDefinitionId": "[resourceId('Microsoft.Authorization/policySetDefinitions', 'policySetDefinition-custom-policies')]"
+        }
+    }
+]}
