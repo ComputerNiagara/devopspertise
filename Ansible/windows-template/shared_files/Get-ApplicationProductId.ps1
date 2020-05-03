@@ -4,7 +4,7 @@
 	.PARAMETER Name
 	  Name of the installed product.
 	.DESCRIPTION
-	  This script retrieves the Product Id for an installed application. The ProductId is returned for consumption by Ansible.
+	  This script retrieves the ProductId for an installed application. The ProductId is returned for consumption by Ansible.
 	  
 	  The Name parameter is the product name as seen in the "Control Panel" under "Programs and Features".
 	  
