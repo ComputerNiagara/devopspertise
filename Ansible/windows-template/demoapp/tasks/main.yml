@@ -1,0 +1,77 @@
+---
+- name: Demoapp Playbook
+  block:
+    - name: Unsupported Package Behavior
+      fail:
+        msg:
+          - "The following package behavior is unsupported: {{ demoapp_package_behavior|lower }}"
+          - "Valid selections (install,uninstall)"
+      when: demoapp_package_behavior|lower != "install" and demoapp_package_behavior|lower != "uninstall"
+
+    - name: Check if Demoapp is Installed
+      win_service:
+        name: Demoapp
+      register: demoapp_svc
+
+    - name: Demoapp Service Info
+      debug:
+        var: demoapp_svc
+      when: demoapp_svc.exists == True
+
+    - name: Get Installed Demoapp Version
+      win_file_version:
+        path: "{{ demoapp_svc.path | regex_search('[a-z](.*)(.exe)(?i)') }}"
+      when: demoapp_svc.exists == True
+      register: demoapp_file_version
+
+    - name: Clean Install
+      debug:
+        msg:
+          - "Demoapp is not installed"
+          - "Installing Demoapp version {{ demoapp_version }}"
+      when: demoapp_svc.exists == False and demoapp_package_behavior|lower == "install"
+      changed_when: true
+      notify: "install demoapp"
+
+    - name: Upgrade
+      debug:
+        msg:
+          - "It appears that Demoapp version {{ demoapp_file_version.win_file_version.product_version }} is currently installed"
+          - "Upgrading to version {{ demoapp_version }}"
+      when: demoapp_svc.exists == True and demoapp_file_version.win_file_version.product_version is version(demoapp_version, operator='<') and demoapp_package_behavior|lower == "install"
+      changed_when: true
+      notify: "install demoapp"
+
+    - name: No Change
+      debug:
+        msg:
+          - "It appears that Demoapp version {{ demoapp_file_version.win_file_version.product_version }} is currently installed"
+          - "Nothing to do"
+      when: demoapp_svc.exists == True and demoapp_file_version.win_file_version.product_version is version(demoapp_version, operator='>=') and demoapp_package_behavior|lower == "install"
+
+    - name: Uninstall
+      debug:
+        msg:
+          - "Uninstall was requested"
+          - "Uninstalling Demoapp version {{ demoapp_file_version.win_file_version.product_version }}"
+      when: demoapp_svc.exists == True and demoapp_package_behavior|lower == "uninstall"
+      changed_when: true
+      notify: "uninstall demoapp"
+
+    - name: Uninstall Requested but Product not Found
+      debug:
+        msg:
+          - "Uninstall was requested"
+          - "Demoapp was not found on the system"
+      when: demoapp_svc.exists == False and demoapp_package_behavior|lower == "uninstall"
+
+  rescue:
+    - name: Clean Up Files
+      win_file:
+        path: C:\temp\Ansible
+        state: absent
+      ignore_errors: True
+    
+    - name: Ansible Play Failed
+      fail:
+        msg: "The playbook has failed, please see previous errors."

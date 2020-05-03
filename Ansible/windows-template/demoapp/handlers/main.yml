@@ -1,0 +1,54 @@
+---
+- name: Create Directory for Local Execution
+  win_file:
+    path: C:\temp\Ansible
+    state: directory
+  listen:
+    - "install demoapp"
+    - "uninstall demoapp"
+
+- name: Download demoapp
+  win_get_url:
+    url: https://<source_path>/Windows/demoapp/v{{ demoapp_version }}/demoapp-Windows-{{ demoapp_version }}.zip
+    dest: C:\temp\Ansible
+  listen: "install demoapp"
+
+- name: Unzip Files
+  win_unzip:
+    src: C:\temp\Ansible\demoapp-Windows-{{ demoapp_version }}.zip
+    dest: C:\temp\Ansible
+  listen: "install demoapp"
+
+- name: Install demoapp 
+  win_package:
+    path: C:\temp\Ansible\demoapp-Windows-{{ demoapp_version }}.msi
+    creates_path: C:\demoapp\demoapp.exe
+    creates_version: "{{ demoapp_version }}"
+    state: present
+  listen: "install demoapp"
+
+- name: Copy get Product ID script
+  win_copy:
+    src: ../../shared_files/get_product_id.ps1
+    dest: C:\temp\Ansible\get_product_id.ps1
+  listen: "uninstall demoapp"
+
+- name: Get Product ID for Uninstall (demoapp)
+  win_shell: C:\temp\Ansible\get_product_id.ps1 "{{ demoapp_package_display_name_uninstall }}"
+  register: product_id_demoapp
+  listen: "uninstall demoapp"
+
+- name: Uninstall demoapp
+  win_package:
+    product_id: '{{ product_id_demoapp.stdout_lines[0] }}'
+    state: absent
+  listen: "uninstall demoapp"
+
+- name: Clean Up Files
+  win_file:
+    path: C:\temp\Ansible
+    state: absent
+  ignore_errors: True
+  listen:
+    - "install demoapp"
+    - "uninstall demoapp"

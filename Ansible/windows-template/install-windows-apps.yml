@@ -1,0 +1,7 @@
+---
+- hosts: windows
+  tasks:
+    - include_role:
+        name: demoapp
+      vars:
+        demoapp_package_behavior: 'install'

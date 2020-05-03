@@ -1,0 +1,4 @@
+---
+demoapp_package_behavior: install
+demoapp_package_display_name_uninstall: "Demoapp"
+demoapp_version: 1.3.443.2
