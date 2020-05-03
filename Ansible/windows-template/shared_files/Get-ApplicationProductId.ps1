@@ -1,16 +1,16 @@
 <#
-    .SYNOPSIS 
+	.SYNOPSIS 
 	  Gets the Product Id for an installed application.
 	.PARAMETER Name
 	  Name of the installed product.
 	.DESCRIPTION
-	  This script retrieves the ProductId for an installed application. The ProductId is returned for consumption by Ansible.
+	  This script retrieves the Product Id for an installed application. The Product Id is returned for consumption by Ansible.
 	  
 	  The Name parameter is the product name as seen in the "Control Panel" under "Programs and Features".
 	  
 	  Name can also be retrieved using 'wmic product list' or from the registry.
-    .EXAMPLE
-      .\Get-ApplicationProductId.ps1 -Name "Application01"
+	.EXAMPLE
+	  .\Get-ApplicationProductId.ps1 -Name "Application01"
 #>
 
 param(
@@ -24,8 +24,8 @@ Try {
 		Get-ChildItem $element -Recurse | ForEach-Object {
 			$oKey = (Get-ItemProperty -Path $_.PsPath)
 			If ($oKey -match $Name){
-				Write-Output $_.PSChildName
-				exit 0
+			Write-Output $_.PSChildName
+			exit 0
 			}
 		}
 	}
