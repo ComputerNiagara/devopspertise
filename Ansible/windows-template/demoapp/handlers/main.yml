@@ -29,12 +29,12 @@
 
 - name: Copy get Product ID script
   win_copy:
-    src: ../../shared_files/get_product_id.ps1
-    dest: C:\temp\Ansible\get_product_id.ps1
+    src: ../../shared_files/Get-ApplicationProductId.ps1
+    dest: C:\temp\Ansible\Get-ApplicationProductId.ps1
   listen: "uninstall demoapp"
 
 - name: Get Product ID for Uninstall (demoapp)
-  win_shell: C:\temp\Ansible\get_product_id.ps1 "{{ demoapp_package_display_name_uninstall }}"
+  win_shell: C:\temp\Ansible\Get-ApplicationProductId.ps1 "{{ demoapp_package_display_name_uninstall }}"
   register: product_id_demoapp
   listen: "uninstall demoapp"
 
