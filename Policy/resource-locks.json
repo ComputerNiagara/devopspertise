@@ -1,0 +1,185 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {},
+    "variables": {},
+    "resources": [
+    {
+        "type": "Microsoft.Authorization/policyDefinitions",
+        "name": "policyDefinition-rvault-lock",
+        "apiVersion": "2019-09-01",
+        "properties": {
+            "displayName": "Deploy resource lock on Recovery services vaults",
+            "policyType": "Custom",
+            "mode": "All",
+            "description": "This policy will enforce Recovery services vault locks.",
+            "metadata": {
+                "category": "Backup"
+            },
+            "parameters": {},
+            "policyRule": {
+                "if": {
+                    "allOf": [
+                        {
+                            "field": "type",
+                            "equals": "Microsoft.RecoveryServices/vaults"
+                        }
+                    ]
+                },
+                "then": {
+                    "effect": "deployIfNotExists",
+                    "details": {
+                        "type": "Microsoft.Authorization/locks",
+                        "roleDefinitionIds": [
+                            "/providers/Microsoft.Authorization/roleDefinitions/00c29273-979b-4161-815c-10b084fb9324",
+                            "/providers/Microsoft.Authorization/roleDefinitions/18d7d88d-d35e-4fb5-a5c3-7773c20a72d9"
+                        ],
+                        "existenceCondition": {
+                            "field": "Microsoft.Authorization/locks/level",
+                            "equals": "CanNotDelete"
+                        },
+                        "deployment": {
+                            "properties": {
+                                "mode": "Incremental",
+                                "parameters": {
+                                    "recoveryVaultName": {
+                                        "value": "[[field('name')]"
+                                    }
+                                },
+                                "template": {
+                                    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                                    "contentVersion": "1.0.0.0",
+                                    "parameters": {
+                                        "recoveryVaultName": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "resources": [
+                                    {
+                                        "type": "Microsoft.RecoveryServices/vaults/providers/locks",
+                                        "apiVersion": "2016-09-01",
+                                        "name": "[[concat(parameters('recoveryVaultName'), '/Microsoft.Authorization/vaultLock')]",
+                                        "properties": {
+                                            "level": "CanNotDelete",
+                                            "notes": "Recovery services vault lock applied by Azure Policy"
+                                        }
+                                    }]
+                                }
+                            }
+                        }
+                    }
+                }
+                }
+        }
+    },
+        {
+        "type": "Microsoft.Authorization/policyDefinitions",
+        "name": "policyDefinition-kvault-lock",
+        "apiVersion": "2019-09-01",
+        "properties": {
+            "displayName": "Deploy resource lock on Key vaults",
+            "policyType": "Custom",
+            "mode": "All",
+            "description": "This policy will enforce Key vault locks.",
+            "metadata": {
+                "category": "Key Vault"
+            },
+            "parameters": {},
+            "policyRule": {
+                "if": {
+                    "allOf": [
+                        {
+                            "field": "type",
+                            "equals": "Microsoft.KeyVault/vaults"
+                        }
+                    ]
+                },
+                "then": {
+                    "effect": "deployIfNotExists",
+                    "details": {
+                        "type": "Microsoft.Authorization/locks",
+                        "roleDefinitionIds": [
+                            "/providers/Microsoft.Authorization/roleDefinitions/00c29273-979b-4161-815c-10b084fb9324",
+                            "/providers/Microsoft.Authorization/roleDefinitions/18d7d88d-d35e-4fb5-a5c3-7773c20a72d9"
+                        ],
+                        "existenceCondition": {
+                            "field": "Microsoft.Authorization/locks/level",
+                            "equals": "CanNotDelete"
+                        },
+                        "deployment": {
+                            "properties": {
+                                "mode": "Incremental",
+                                "parameters": {
+                                    "recoveryVaultName": {
+                                        "value": "[[field('name')]"
+                                    }
+                                },
+                                "template": {
+                                    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                                    "contentVersion": "1.0.0.0",
+                                    "parameters": {
+                                        "recoveryVaultName": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "resources": [
+                                    {
+                                        "type": "Microsoft.KeyVault/vaults/providers/locks",
+                                        "apiVersion": "2016-09-01",
+                                        "name": "[[concat(parameters('recoveryVaultName'), '/Microsoft.Authorization/vaultLock')]",
+                                        "properties": {
+                                            "level": "CanNotDelete",
+                                            "notes": "Key vault lock applied by Azure Policy"
+                                        }
+                                    }]
+                                }
+                            }
+                        }
+                    }
+                }
+                }
+        }
+    },
+    {
+        "type": "Microsoft.Authorization/policySetDefinitions",
+        "name": "policySetDefinition-policies-locks",
+        "apiVersion": "2019-09-01",
+        "dependsOn": [
+            "policyDefinition-rvault-lock",
+            "policyDefinition-kvault-lock"
+        ],
+        "properties": {
+            "displayName": "Resource locks",
+            "policyType": "Custom",
+            "description": "Policies for applying and reporting on resource lock compliance.",
+            "metadata": {
+                "category": "General"
+            },
+            "policyDefinitions": [
+                {
+                    "policyDefinitionId": "[resourceId('Microsoft.Authorization/policyDefinitions', 'policyDefinition-rvault-lock')]"
+                },
+                {
+                    "policyDefinitionId": "[resourceId('Microsoft.Authorization/policyDefinitions', 'policyDefinition-kvault-lock')]"
+                }
+            ]
+        }
+    },
+    {
+        "type": "Microsoft.Authorization/policyAssignments",
+        "name": "policyAssignment-policies-locks",
+        "apiVersion": "2019-09-01",
+        "dependsOn": [
+            "policySetDefinition-policies-locks"
+        ],
+        "properties": {
+            "displayName": "Resource locks",
+            "scope": "[subscription().id]",
+            "policyDefinitionId": "[resourceId('Microsoft.Authorization/policySetDefinitions', 'policySetDefinition-policies-locks')]"
+        },
+        "location": "canadacentral",
+        "identity": {
+            "type": "SystemAssigned"
+        }
+    }
+]}
