@@ -1,0 +1,30 @@
+schedules:
+- cron: "0 0 * * 6"
+  displayName: Weekly NSG capture
+  branches:
+    include:
+      - master
+  always: true
+
+pool:
+  vmImage: 'vs2017-win2016'
+
+steps:
+- task: AzurePowerShell@5
+  displayName: 'Capture NSGs'
+  inputs:
+    azureSubscription: 'captureNsg'
+    ScriptType: 'FilePath'
+    ScriptPath: '$(System.DefaultWorkingDirectory)/Get-AzNetworkSecurityGroupSecurityRules.ps1'
+    ScriptArguments: '-Subscription "subscription01"'
+    azurePowerShellVersion: 'LatestVersion'
+
+- task: AzureFileCopy@3
+  displayName: 'Copy NSGs to Storage Account'
+  inputs:
+    SourcePath: '$(System.DefaultWorkingDirectory)/nsgRules/subscription01'
+    azureSubscription: 'captureNsg'
+    Destination: 'AzureBlob'
+    storage: 'storageAccount01'
+    ContainerName: 'nsgs'
+    BlobPrefix: 'subscription01/build-$(Build.BuildNumber)'
