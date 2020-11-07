@@ -1,0 +1,22 @@
+trigger: none
+pr: none
+schedules:
+- cron: "0 0 * * 6"
+  displayName: Weekly Route Table Update
+  branches:
+    include:
+      - master
+  always: true
+
+pool:
+  vmImage: 'vs2017-win2016'
+
+steps:
+- task: AzurePowerShell@5
+  displayName: 'Update Route Table'
+  inputs:
+    azureSubscription: 'routeTableAutomation'
+    ScriptType: 'FilePath'
+    ScriptPath: '$(System.DefaultWorkingDirectory)/New-AzAutomatedRouteTable.ps1'
+    ScriptArguments: '-Subscription "Subscription01" -ResourceGroupName "ResourceGroup01" -AssociateSubnets $true -Cleanup $true'
+    azurePowerShellVersion: 'LatestVersion'
