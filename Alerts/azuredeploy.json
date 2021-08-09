@@ -1,0 +1,257 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "actionGroupName": {
+            "type": "string",
+            "defaultValue": "monitorTeam",
+            "minLength": 1,
+            "metadata": {
+                "description": "Unique name (within the Resource Group) for the Action group."
+            }
+        },
+        "actionGroupShortName": {
+            "type": "string",
+            "defaultValue": "monitorTeam",
+            "minLength": 1,
+            "maxLength": 12,
+            "metadata": {
+                "description": "Short name for the Action group."
+            }
+        },
+        "logAnalyticsWorkspaceId": {
+          "type": "String",
+          "metadata": {
+            "displayName": "Log analytics workspace",
+            "description": "Auditing writes database events to a log analytics workspace.",
+            "strongType": "omsWorkspace"
+          }
+        },
+        "location": {
+          "type": "string",
+          "defaultValue": "[resourceGroup().location]",
+          "metadata": {
+            "description": "Location for all resources."
+          }
+        }
+    },
+    "variables": {},
+    "resources":[ 
+    {
+        "type": "Microsoft.Insights/actionGroups",
+        "apiVersion": "2018-03-01",
+        "name": "[parameters('actionGroupName')]",
+        "location": "Global",
+        "properties": {
+            "groupShortName": "[parameters('actionGroupShortName')]",
+            "enabled": true,
+            "smsReceivers": [],
+            "emailReceivers": [
+                {
+                    "name": "emailReceiver",
+                    "emailAddress": "<receiverEmail>"
+                }
+            ]
+        }
+    },
+    {
+        "name":"vmLowDiskSpace",
+        "type":"Microsoft.Insights/scheduledQueryRules",
+        "apiVersion": "2018-04-16",
+        "location": "[parameters('location')]",
+        "dependsOn": [
+            "[parameters('actionGroupName')]"
+        ],
+        "properties": {
+            "description": "Virtual Machine Low Disk Space - Less Than 5%",
+            "enabled": "true",
+            "source": {
+                "query": "Perf | where CounterName == \"% Free Space\" | summarize AggregatedValue = avg(CounterValue) by bin(TimeGenerated, 15m), Computer, InstanceName | summarize AggregatedValue = arg_min(AggregatedValue, InstanceName, Computer) by Computer | project Computer, DriveLetter=InstanceName, FreeSpacePercent=AggregatedValue | where FreeSpacePercent < 5 | order by FreeSpacePercent asc",
+                "dataSourceId": "[parameters('logAnalyticsWorkspaceId')]",
+                "queryType": "ResultCount"
+            },
+            "schedule": {
+                "frequencyInMinutes": 15,
+                "timeWindowInMinutes": 15
+            },
+            "action": {
+                "odata.type": "Microsoft.WindowsAzure.Management.Monitoring.Alerts.Models.Microsoft.AppInsights.Nexus.DataContracts.Resources.ScheduledQueryRules.AlertingAction",
+                "severity": 2,
+                "aznsAction": {
+                    "actionGroup": "[array(resourceId('Microsoft.Insights/actionGroups', parameters('actionGroupName')))]",
+                    "emailSubject": "Virtual Machine Low Disk Space - Less Than 5%"
+                },
+                "trigger": {
+                    "thresholdOperator": "GreaterThanOrEqual",
+                    "threshold": 1
+                }
+            }
+        }
+    },
+    {
+        "name":"vmLowMemory",
+        "type":"Microsoft.Insights/scheduledQueryRules",
+        "apiVersion": "2018-04-16",
+        "location": "[parameters('location')]",
+        "dependsOn": [
+            "[parameters('actionGroupName')]"
+        ],
+        "properties": {
+            "description": "Virtual Machine Low Memory - Less Than 250 MB Free",
+            "enabled": "true",
+            "source": {
+                "query": "Perf | where CounterName == \"Available MBytes\" | summarize AggregatedValue = avg(CounterValue) by bin(TimeGenerated, 15m), Computer | summarize arg_min(AggregatedValue, Computer) by Computer | project Computer, MemoryGBFree=AggregatedValue/1024 | where MemoryGBFree < 0.25 | order by MemoryGBFree asc",
+                "dataSourceId": "[parameters('logAnalyticsWorkspaceId')]",
+                "queryType": "ResultCount"
+            },
+            "schedule": {
+                "frequencyInMinutes": 15,
+                "timeWindowInMinutes": 15
+            },
+            "action": {
+                "odata.type": "Microsoft.WindowsAzure.Management.Monitoring.Alerts.Models.Microsoft.AppInsights.Nexus.DataContracts.Resources.ScheduledQueryRules.AlertingAction",
+                "severity": 2,
+                "aznsAction": {
+                    "actionGroup": "[array(resourceId('Microsoft.Insights/actionGroups', parameters('actionGroupName')))]",
+                    "emailSubject": "Virtual Machine Low Memory - Less Than 250 MB Free"
+                },
+                "trigger": {
+                    "thresholdOperator": "GreaterThanOrEqual",
+                    "threshold": 1
+                }
+            }
+        }
+    },
+    {
+        "name":"vmCpuUtilization",
+        "type":"Microsoft.Insights/metricAlerts",
+        "apiVersion": "2018-03-01",
+        "location": "Global",
+        "dependsOn": [
+            "[parameters('actionGroupName')]"
+        ],
+        "properties": {
+            "severity": 2,
+            "enabled": true,
+            "scopes": [
+                "[subscription().Id]"
+            ],
+            "evaluationFrequency": "PT15M",
+            "windowSize": "PT15M",
+            "criteria": {
+                "allOf": [
+                    {
+                        "threshold": 75,
+                        "name": "Metric1",
+                        "metricNamespace": "Microsoft.Compute/virtualMachines",
+                        "metricName": "Percentage CPU",
+                        "dimensions": [],
+                        "operator": "GreaterThan",
+                        "timeAggregation": "Average",
+                        "criterionType": "StaticThresholdCriterion"
+                    }
+                ],
+                "odata.type": "Microsoft.Azure.Monitor.MultipleResourceMultipleMetricCriteria"
+            },
+            "autoMitigate": true,
+            "targetResourceType": "Microsoft.Compute/virtualMachines",
+            "targetResourceRegion": "[parameters('location')]",
+            "actions": [
+                {
+                    "actionGroupId": "[resourceId('Microsoft.Insights/actionGroups', parameters('actionGroupName'))]",
+                    "webHookProperties": {}
+                }
+            ],
+            "description": "Average CPU Utilization Greater Than 75%"
+        }
+    },
+    {
+        "name":"vmOsDiskQueueLength",
+        "type":"Microsoft.Insights/metricAlerts",
+        "apiVersion": "2018-03-01",
+        "location": "Global",
+        "dependsOn": [
+            "[parameters('actionGroupName')]"
+        ],
+        "properties": {
+            "description": "O/S Disk Queue Length",
+            "severity": 2,
+            "enabled": true,
+            "scopes": [
+                "[subscription().Id]"
+            ],
+            "evaluationFrequency": "PT5M",
+            "windowSize": "PT5M",
+            "criteria": {
+                "allOf": [
+                    {
+                        "alertSensitivity": "Low",
+                        "failingPeriods": {
+                            "numberOfEvaluationPeriods": 4,
+                            "minFailingPeriodsToAlert": 4
+                        },
+                        "name": "Metric1",
+                        "metricNamespace": "Microsoft.Compute/virtualMachines",
+                        "metricName": "OS Disk Queue Depth",
+                        "dimensions": [],
+                        "operator": "GreaterThan",
+                        "timeAggregation": "Average",
+                        "criterionType": "DynamicThresholdCriterion"
+                    }
+                ],
+                "odata.type": "Microsoft.Azure.Monitor.MultipleResourceMultipleMetricCriteria"
+            },
+            "autoMitigate": true,
+            "targetResourceType": "Microsoft.Compute/virtualMachines",
+            "targetResourceRegion": "[parameters('location')]",
+            "actions": [
+                {
+                    "actionGroupId": "[resourceId('Microsoft.Insights/actionGroups', parameters('actionGroupName'))]",
+                    "webHookProperties": {}
+                }
+            ]
+        }
+    },
+    {
+        "name":"vmDeletionSucceeded",
+        "type": "Microsoft.Insights/activityLogAlerts",
+        "apiVersion": "2017-04-01",
+        "location": "Global",
+        "properties": {
+            "scopes": [
+                "[subscription().Id]"
+            ],
+            "condition": {
+                "allOf": [
+                    {
+                        "field": "category",
+                        "equals": "Administrative"
+                    },
+                    {
+                        "field": "resourceType",
+                        "equals": "Microsoft.Compute/virtualMachines"
+                    },
+                    {
+                        "field": "operationName",
+                        "equals": "Microsoft.Compute/virtualMachines/delete"
+                    },
+                    {
+                        "field": "status",
+                        "equals": "succeeded"
+                    }
+                ]
+            },
+            "actions": {
+                "actionGroups": [
+                    {
+                        "actionGroupId": "[resourceId('Microsoft.Insights/actionGroups', parameters('actionGroupName'))]",
+                        "webhookProperties": {}
+                    }
+                ]
+            },
+            "enabled": true,
+            "description": "Virtual Machine Deleted Successfully"
+        }
+    }
+    ]
+}

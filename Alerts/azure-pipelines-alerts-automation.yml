@@ -1,0 +1,19 @@
+trigger:
+- master
+
+pool:
+  vmImage: 'windows-latest'
+
+steps:
+- task: AzureResourceManagerTemplateDeployment@3
+  inputs:
+    deploymentScope: 'Resource Group'
+    azureResourceManagerConnection: '<serviceConnectionName>'
+    subscriptionId: '<subscriptionId>'
+    action: 'Create Or Update Resource Group'
+    resourceGroupName: '<resourceGroupName>'
+    location: 'Canada Central'
+    templateLocation: 'Linked artifact'
+    csmFile: '$(System.DefaultWorkingDirectory)/azuredeploy.json'
+    csmParametersFile: '$(System.DefaultWorkingDirectory)/azuredeploy.parameters.json'
+    deploymentMode: 'Incremental'
