@@ -1,0 +1,63 @@
+--- # OWASP ZAP automation configuration file, for more details see https://www.zaproxy.org/docs/automate/automation-framework/
+env:
+  contexts:
+    - name: "Default Context"
+      urls:
+      - "https://{url-here}"
+      includePaths:
+      - "https://{url-here}*"
+  parameters:
+    failOnError: true
+    failOnWarning: false
+    progressToStdout: true
+
+jobs:
+  - type: spider
+    parameters:
+      context: "Default Context"
+    tests:
+      - name: 'At least 100 URLs found'
+        type: 'stats'
+        statistic: 'automation.spider.urls.added'
+        operator: '>='
+        value: 100
+        onFail: 'info'
+  - name: activeScan
+    type: activeScan
+    parameters:
+      context: "Default Context"
+  - name: report
+    type: report
+    parameters:
+      template: traditional-xml
+      reportDir: "C:\\agent\\_work\\_temp"
+      reportFile: "owasp-zap-report"
+      reportTitle: "OWASP ZAP Scan Report"
+      reportDescription: ""
+    risks:
+    - "info"
+    - "low"
+    - "medium"
+    - "high"
+    confidences:
+    - "falsepositive"
+    - "low"
+    - "medium"
+    - "high"
+    - "confirmed"
+    sections:
+    - "siteRiskCounts"
+    - "responseBody"
+    - "appendix"
+    - "alertTypes"
+    - "responseHeader"
+    - "alertTypeCounts"
+    - "riskConfidenceCounts"
+    - "alerts"
+    - "aboutThisReport"
+    - "contents"
+    - "requestBody"
+    - "reportDescription"
+    - "reportParameters"
+    - "requestHeader"
+    - "summaries"

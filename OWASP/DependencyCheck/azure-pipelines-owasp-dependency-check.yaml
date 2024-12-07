@@ -1,0 +1,84 @@
+trigger: none
+
+variables: 
+- group: 'OWASP.DEPENDENCYCHECK' # variable group
+- name: 'odcProjectName'
+  value: 'IDMS'
+
+stages:
+- stage: DependencyCheck
+  pool: 'OWASP'
+  jobs:
+  - job: DependencyCheckCli
+    steps:
+    # Run OWASP Dependency-Check PowerShell script.
+    - task: PowerShell@2
+      displayName: Run OWASP Dependency-Check
+      inputs:
+        targetType: 'filePath'
+        filePath: '$(Agent.HomeDirectory)\Invoke-OwaspDependencyCheck.ps1'
+      env:
+        ODC_PROJECTNAME: $(odcProjectName)
+        ODC_PATHCLI: $(odcPathCli)
+        ODC_PATHDELETE: $(odcPathDelete)
+        ODC_PATHINSTALL: $(odcPathInstall)
+        ODC_REQUIREVERSION: $(odcRequireVersion)
+        ODC_URLDOWNLOAD: $(odcUrlDownload)
+        ODC_NVDAPIKEY: $(odcNvdApiKey)
+
+    # Publish OWASP Dependency-Check JUnit test results.
+    - task: PublishTestResults@2
+      displayName: Publish ODC Test Results
+      inputs:
+        testResultsFormat: 'JUnit'
+        testResultsFiles: '**/*junit.xml'
+        searchFolder: '$(Build.ArtifactStagingDirectory)'
+        testRunTitle: 'OWASP Dependency-Check'
+
+    # Publish OWASP Dependency-Check files as an artifacts.
+    - task: PublishPipelineArtifact@1
+      displayName: Publish ODC Artifacts
+      inputs:
+        targetPath: '$(Build.ArtifactStagingDirectory)'
+        artifactName: OwaspDependencyCheck
+- stage: Build
+  dependsOn: []
+  pool:
+    vmImage: 'ubuntu-latest'
+  jobs:
+  - job: BuildApis
+    steps:
+    #Restore packages.
+    - task: DotNetCoreCLI@2
+      displayName: Restore
+      inputs:
+        command: 'restore'
+        projects: '**/*.csproj'
+
+    # Build project.
+    - task: DotNetCoreCLI@2
+      displayName: Build
+      inputs:
+        command: build
+        projects: '**/*.csproj'
+        arguments: '--configuration $(buildConfiguration)'
+
+  - job: PublishApis
+    dependsOn: BuildApis
+    steps:
+    # Publish project.
+    - task: DotNetCoreCLI@2
+      displayName: Publish
+      inputs:
+        command: publish
+        projects: '**/*.csproj'
+        publishWebProjects: false
+        arguments: '--configuration $(BuildConfiguration) --output $(Build.ArtifactStagingDirectory)'
+        zipAfterPublish: True
+   
+    # Publish build artifacts.
+    - task: PublishPipelineArtifact@1
+      displayName: Publish Artifacts
+      inputs:
+        targetPath: $(Build.ArtifactStagingDirectory)
+        artifactName: FuncAppApi
