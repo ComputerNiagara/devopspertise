@@ -3,7 +3,7 @@ trigger: none
 variables: 
 - group: 'OWASP.DEPENDENCYCHECK' # variable group
 - name: 'odcProjectName'
-  value: 'IDMS'
+  value: 'applicationName'
 
 stages:
 - stage: DependencyCheck

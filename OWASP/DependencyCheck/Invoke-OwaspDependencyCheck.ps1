@@ -7,8 +7,6 @@
 
 	Subsequently it will run the tool against the sources for the project.
 
-	For more detailed information about OWASP Dependency-Check, visit the DevOps Wiki or Repository.
-
 	.EXAMPLE
 	PS> .\Invoke-OwaspDependencyCheck.ps1
 	Runs OWASP Dependency-Check 
